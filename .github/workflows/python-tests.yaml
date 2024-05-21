@@ -3,12 +3,10 @@ name: Python Tests
 on:
   push:
     branches:
-      - main
-      - develop
+      - '**'
   pull_request:
     branches:
-      - main
-      - develop
+      - '**'
 
 jobs:
   test:
@@ -16,15 +14,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      run: |
-        git init
-        git remote add origin https://github.com/${{ github.repository }}
-        git fetch origin +refs/heads/*:refs/remotes/origin/* +refs/pull/*:refs/remotes/pull/*
-        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-          git checkout -b "${{ github.head_ref }}" "refs/remotes/pull/${{ github.event.pull_request.number }}/merge"
-        else
-          git checkout ${{ github.ref }}
-        fi
+      uses: actions/checkout@v2
 
     - name: Set up Python
       run: |
