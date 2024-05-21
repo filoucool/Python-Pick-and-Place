@@ -1,4 +1,4 @@
-# Commit message: Implement process_frame method to detect colored cubes
+# Commit message: Add main loop for continuous cube detection
 
 import cv2
 import pyrealsense2 as rs
@@ -59,3 +59,14 @@ class RealSenseCubeDetector:
     def stop(self):
         self.pipeline.stop()
         cv2.destroyAllWindows()
+
+if __name__ == "__main__":
+    detector = RealSenseCubeDetector()
+    try:
+        while True:
+            detected_cubes = detector.detect_cubes()
+            print(detected_cubes)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+    finally:
+        detector.stop()
