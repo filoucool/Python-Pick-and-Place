@@ -17,11 +17,13 @@ jobs:
       run: |
         git init
         git remote add origin https://github.com/${{ github.repository }}
-        git fetch origin +refs/heads/*:refs/remotes/origin/* +refs/pull/*:refs/remotes/pull/*
+        git fetch origin
         if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-          git checkout -b "${{ github.head_ref }}" "refs/remotes/pull/${{ github.event.pull_request.number }}/head"
+          git fetch origin +refs/pull/${{ github.event.pull_request.number }}/merge
+          git checkout -qf FETCH_HEAD
         else
-          git checkout ${{ github.ref }}
+          git fetch origin ${{ github.ref }}
+          git checkout -qf ${{ github.ref }}
         fi
 
     - name: Set up Python
