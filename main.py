@@ -1,4 +1,4 @@
-# Commit message: Implement logging levels for different outputs
+# Commit message: Add visual feedback with bounding boxes around detected cubes
 
 import cv2
 import pyrealsense2 as rs
@@ -48,7 +48,8 @@ class RealSenseCubeDetector:
                     center = (x + w // 2, y + h // 2)
                     detected_cubes.append({
                         'color': color,
-                        'position': center
+                        'position': center,
+                        'rectangle': (x, y, w, h)
                     })
         return detected_cubes
 
@@ -63,6 +64,14 @@ class RealSenseCubeDetector:
 
         color_image = np.asanyarray(color_frame.get_data())
         detected_cubes = self.process_frame(color_image)
+
+        for cube in detected_cubes:
+            x, y, w, h = cube['rectangle']
+            cv2.rectangle(color_image, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            cv2.putText(color_image, cube['color'], (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+
+        cv2.imshow('RealSense Cube Detection', color_image)
+
         logging.info(f"Detected cubes: {detected_cubes}")
         return detected_cubes
 
