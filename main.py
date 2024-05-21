@@ -1,15 +1,16 @@
-# Commit message: Optimize HSV color conversion in process_frame method
+# Commit message: Add command-line arguments for min area and stream resolution
 
 import cv2
 import pyrealsense2 as rs
 import numpy as np
+import argparse
 
 class RealSenseCubeDetector:
-    def __init__(self, min_area=100):
+    def __init__(self, min_area=100, resolution=(640, 480)):
         self.pipeline = rs.pipeline()
         self.config = rs.config()
-        self.config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
-        self.config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+        self.config.enable_stream(rs.stream.depth, resolution[0], resolution[1], rs.format.z16, 30)
+        self.config.enable_stream(rs.stream.color, resolution[0], resolution[1], rs.format.bgr8, 30)
         try:
             self.pipeline.start(self.config)
         except Exception as e:
@@ -70,7 +71,13 @@ class RealSenseCubeDetector:
         cv2.destroyAllWindows()
 
 if __name__ == "__main__":
-    detector = RealSenseCubeDetector()
+    parser = argparse.ArgumentParser(description="RealSense Cube Detector")
+    parser.add_argument("--min_area", type=int, default=100, help="Minimum contour area to consider as a cube")
+    parser.add_argument("--width", type=int, default=640, help="Width of the video stream")
+    parser.add_argument("--height", type=int, default=480, help="Height of the video stream")
+    args = parser.parse_args()
+
+    detector = RealSenseCubeDetector(min_area=args.min_area, resolution=(args.width, args.height))
     try:
         while True:
             detected_cubes = detector.detect_cubes()
