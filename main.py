@@ -1,4 +1,4 @@
-# Commit message: Add main loop for continuous cube detection
+# Commit message: Add logging to print detected cubes
 
 import cv2
 import pyrealsense2 as rs
@@ -54,7 +54,9 @@ class RealSenseCubeDetector:
             return []
 
         color_image = np.asanyarray(color_frame.get_data())
-        return self.process_frame(color_image)
+        detected_cubes = self.process_frame(color_image)
+        print(detected_cubes)
+        return detected_cubes
 
     def stop(self):
         self.pipeline.stop()
@@ -65,7 +67,6 @@ if __name__ == "__main__":
     try:
         while True:
             detected_cubes = detector.detect_cubes()
-            print(detected_cubes)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
     finally:
