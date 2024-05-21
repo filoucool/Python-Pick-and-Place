@@ -16,27 +16,18 @@ jobs:
 
     steps:
     - name: Checkout code
-      run: |
-        git init
-        git remote add origin https://github.com/${{ github.repository }}
-        git fetch origin +refs/heads/*:refs/remotes/origin/* +refs/pull/*:refs/remotes/pull/*
-        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-          git checkout -b "${{ github.head_ref }}" "refs/remotes/pull/${{ github.event.pull_request.number }}/merge"
-        else
-          git checkout "${{ github.ref }}"
-        fi
+      uses: actions/checkout@v2
 
     - name: Set up Python
-      run: |
-        sudo apt-get update
-        sudo apt-get install python3.7 python3.7-venv python3.7-dev -y
-        python3.7 -m venv venv
-        source venv/bin/activate
-        python -m pip install --upgrade pip
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.7'
 
     - name: Install dependencies
       run: |
+        python -m venv venv
         source venv/bin/activate
+        python -m pip install --upgrade pip
         pip install -r requirements.txt || true
         pip install numpy opencv-python-headless pyrealsense2
 
