@@ -1,9 +1,10 @@
-# Commit message: Add command-line arguments for min area and stream resolution
+# Commit message: Implement logging levels for different outputs
 
 import cv2
 import pyrealsense2 as rs
 import numpy as np
 import argparse
+import logging
 
 class RealSenseCubeDetector:
     def __init__(self, min_area=100, resolution=(640, 480)):
@@ -14,7 +15,7 @@ class RealSenseCubeDetector:
         try:
             self.pipeline.start(self.config)
         except Exception as e:
-            print(f"Failed to start RealSense pipeline: {e}")
+            logging.error(f"Failed to start RealSense pipeline: {e}")
             self.pipeline = None
 
         self.color_ranges = self.define_color_ranges()
@@ -62,7 +63,7 @@ class RealSenseCubeDetector:
 
         color_image = np.asanyarray(color_frame.get_data())
         detected_cubes = self.process_frame(color_image)
-        print(detected_cubes)
+        logging.info(f"Detected cubes: {detected_cubes}")
         return detected_cubes
 
     def stop(self):
@@ -75,7 +76,10 @@ if __name__ == "__main__":
     parser.add_argument("--min_area", type=int, default=100, help="Minimum contour area to consider as a cube")
     parser.add_argument("--width", type=int, default=640, help="Width of the video stream")
     parser.add_argument("--height", type=int, default=480, help="Height of the video stream")
+    parser.add_argument("--log", type=str, default="INFO", help="Logging level")
     args = parser.parse_args()
+
+    logging.basicConfig(level=args.log.upper())
 
     detector = RealSenseCubeDetector(min_area=args.min_area, resolution=(args.width, args.height))
     try:
