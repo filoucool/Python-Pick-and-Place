@@ -17,11 +17,25 @@ jobs:
     steps:
     - name: Checkout code
       run: |
-        git clone ${{ github.repositoryUrl }} .
+        git clone https://github.com/${{ github.repository }} .
         git fetch --all
         git reset --hard origin/${{ github.ref }}
 
     - name: Set up Python
       run: |
         sudo apt-get update
-        sudo apt-get install python3.8 python3.8-venv 
+        sudo apt-get install python3.8 python3.8-venv python3.8-dev -y
+        python3.8 -m venv venv
+        source venv/bin/activate
+        python -m pip install --upgrade pip
+
+    - name: Install dependencies
+      run: |
+        source venv/bin/activate
+        pip install -r requirements.txt || true
+        pip install numpy opencv-python-headless pyrealsense2
+
+    - name: Run tests
+      run: |
+        source venv/bin/activate
+        python -m unittest discover -s Tests -p "test_*.py"
