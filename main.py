@@ -1,4 +1,4 @@
-# Commit message: Refactor color range definitions to improve readability
+# Commit message: Add error handling for RealSense pipeline
 
 import cv2
 import pyrealsense2 as rs
@@ -10,7 +10,11 @@ class RealSenseCubeDetector:
         self.config = rs.config()
         self.config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
         self.config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
-        self.pipeline.start(self.config)
+        try:
+            self.pipeline.start(self.config)
+        except Exception as e:
+            print(f"Failed to start RealSense pipeline: {e}")
+            self.pipeline = None
 
         self.color_ranges = self.define_color_ranges()
         self.min_area = min_area  # Minimum area of the contour to be considered as a cube
@@ -48,6 +52,9 @@ class RealSenseCubeDetector:
         return detected_cubes
 
     def detect_cubes(self):
+        if not self.pipeline:
+            return []
+
         frames = self.pipeline.wait_for_frames()
         color_frame = frames.get_color_frame()
         if not color_frame:
@@ -59,7 +66,8 @@ class RealSenseCubeDetector:
         return detected_cubes
 
     def stop(self):
-        self.pipeline.stop()
+        if self.pipeline:
+            self.pipeline.stop()
         cv2.destroyAllWindows()
 
 if __name__ == "__main__":
