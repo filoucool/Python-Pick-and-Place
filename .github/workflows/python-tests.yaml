@@ -17,9 +17,10 @@ jobs:
     steps:
     - name: Checkout code
       run: |
-        git clone https://github.com/${{ github.repository }} .
-        git fetch --all
-        git reset --hard origin/${{ github.ref }}
+        git init
+        git remote add origin https://github.com/${{ github.repository }}
+        git fetch origin
+        git checkout ${{ github.ref }}
 
     - name: Set up Python
       run: |
