@@ -17,9 +17,14 @@ jobs:
     steps:
     - name: Checkout code
       run: |
-        git clone https://github.com/${{ github.repository }} .
-        git fetch --all
-        git reset --hard ${{ github.sha }}
+        git init
+        git remote add origin https://github.com/${{ github.repository }}
+        git fetch origin +refs/heads/*:refs/remotes/origin/* +refs/pull/*:refs/remotes/pull/*
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          git checkout -b "${{ github.head_ref }}" "refs/remotes/pull/${{ github.event.pull_request.number }}/merge"
+        else
+          git checkout ${{ github.ref }}
+        fi
 
     - name: Set up Python
       run: |
