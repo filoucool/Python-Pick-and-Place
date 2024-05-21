@@ -1,4 +1,4 @@
-# Commit message: Add error handling for RealSense pipeline
+# Commit message: Optimize HSV color conversion in process_frame method
 
 import cv2
 import pyrealsense2 as rs
@@ -33,8 +33,7 @@ class RealSenseCubeDetector:
 
     def process_frame(self, color_image):
         detected_cubes = []
-        blurred_image = cv2.GaussianBlur(color_image, (5, 5), 0)
-        hsv = cv2.cvtColor(blurred_image, cv2.COLOR_BGR2HSV)
+        hsv = cv2.cvtColor(color_image, cv2.COLOR_BGR2HSV)
 
         for color, (lower, upper) in self.color_ranges.items():
             mask = cv2.inRange(hsv, lower, upper)
