@@ -3,10 +3,12 @@ name: Python Tests
 on:
   push:
     branches:
-      - main
+      - master
+      - develop
   pull_request:
     branches:
-      - main
+      - master
+      - develop
 
 jobs:
   test:
@@ -19,7 +21,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.7'
+        python-version: '3.8'  # Specify the Python version you are using
 
     - name: Install dependencies
       run: |
