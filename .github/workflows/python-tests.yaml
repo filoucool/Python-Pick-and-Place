@@ -1,0 +1,49 @@
+name: Python Tests
+
+on:
+  push:
+    branches:
+      - master
+      - develop
+  pull_request:
+    branches:
+      - master
+      - develop
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      run: |
+        git init
+        git remote add origin https://github.com/${{ github.repository }}
+        git fetch origin +refs/heads/*:refs/remotes/origin/* +refs/pull/*:refs/remotes/pull/*
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          git checkout -b "${{ github.head_ref }}" "refs/remotes/pull/${{ github.event.pull_request.number }}/merge"
+        else
+          git checkout ${{ github.ref }}
+        fi
+
+    - name: Set up Python
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y software-properties-common
+        sudo add-apt-repository ppa:deadsnakes/ppa
+        sudo apt-get update
+        sudo apt-get install -y python3.7 python3.7-venv python3.7-dev
+        python3.7 -m venv venv
+        source venv/bin/activate
+        python -m pip install --upgrade pip
+
+    - name: Install dependencies
+      run: |
+        source venv/bin/activate
+        pip install -r requirements.txt || true
+        pip install numpy opencv-python-headless pyrealsense2
+
+    - name: Run tests
+      run: |
+        source venv/bin/activate
+        python -m unittest discover -s Tests -p "test_*.py"
