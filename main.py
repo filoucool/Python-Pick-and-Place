@@ -1,4 +1,4 @@
-# Commit message: Add logging to print detected cubes
+# Commit message: Refactor color range definitions to improve readability
 
 import cv2
 import pyrealsense2 as rs
@@ -18,13 +18,13 @@ class RealSenseCubeDetector:
 
     def define_color_ranges(self):
         return {
-            'red': ((0, 120, 70), (10, 255, 255)),
-            'green': ((40, 40, 40), (80, 255, 255)),
-            'blue': ((100, 150, 150), (140, 255, 255)),
-            'yellow': ((20, 100, 100), (30, 255, 255)),
-            'cyan': ((80, 100, 100), (100, 255, 255)),
-            'orange': ((10, 100, 100), (25, 255, 255)),
-            'pink': ((145, 60, 65), (165, 255, 255))
+            'red': (np.array([0, 120, 70]), np.array([10, 255, 255])),
+            'green': (np.array([40, 40, 40]), np.array([80, 255, 255])),
+            'blue': (np.array([100, 150, 150]), np.array([140, 255, 255])),
+            'yellow': (np.array([20, 100, 100]), np.array([30, 255, 255])),
+            'cyan': (np.array([80, 100, 100]), np.array([100, 255, 255])),
+            'orange': (np.array([10, 100, 100]), np.array([25, 255, 255])),
+            'pink': (np.array([145, 60, 65]), np.array([165, 255, 255]))
         }
 
     def process_frame(self, color_image):
@@ -33,7 +33,7 @@ class RealSenseCubeDetector:
         hsv = cv2.cvtColor(blurred_image, cv2.COLOR_BGR2HSV)
 
         for color, (lower, upper) in self.color_ranges.items():
-            mask = cv2.inRange(hsv, np.array(lower), np.array(upper))
+            mask = cv2.inRange(hsv, lower, upper)
             mask = cv2.dilate(mask, self.kernel, iterations=1)
             mask = cv2.erode(mask, self.kernel, iterations=1)
             contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
