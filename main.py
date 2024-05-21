@@ -1,4 +1,4 @@
-# Commit message: Add visual feedback with bounding boxes around detected cubes
+# Commit message: Add depth information to detected cubes
 
 import cv2
 import pyrealsense2 as rs
@@ -33,7 +33,7 @@ class RealSenseCubeDetector:
             'pink': (np.array([145, 60, 65]), np.array([165, 255, 255]))
         }
 
-    def process_frame(self, color_image):
+    def process_frame(self, color_image, depth_frame):
         detected_cubes = []
         hsv = cv2.cvtColor(color_image, cv2.COLOR_BGR2HSV)
 
@@ -46,10 +46,12 @@ class RealSenseCubeDetector:
                 if cv2.contourArea(contour) > self.min_area:
                     x, y, w, h = cv2.boundingRect(contour)
                     center = (x + w // 2, y + h // 2)
+                    depth = depth_frame.get_distance(center[0], center[1])
                     detected_cubes.append({
                         'color': color,
                         'position': center,
-                        'rectangle': (x, y, w, h)
+                        'rectangle': (x, y, w, h),
+                        'depth': depth
                     })
         return detected_cubes
 
@@ -58,17 +60,19 @@ class RealSenseCubeDetector:
             return []
 
         frames = self.pipeline.wait_for_frames()
+        depth_frame = frames.get_depth_frame()
         color_frame = frames.get_color_frame()
-        if not color_frame:
+        if not color_frame or not depth_frame:
             return []
 
         color_image = np.asanyarray(color_frame.get_data())
-        detected_cubes = self.process_frame(color_image)
+        detected_cubes = self.process_frame(color_image, depth_frame)
 
         for cube in detected_cubes:
             x, y, w, h = cube['rectangle']
             cv2.rectangle(color_image, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            cv2.putText(color_image, cube['color'], (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+            text = f"{cube['color']} ({cube['depth']:.2f}m)"
+            cv2.putText(color_image, text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
 
         cv2.imshow('RealSense Cube Detection', color_image)
 
