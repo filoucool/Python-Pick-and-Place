@@ -1,13 +1,12 @@
-# Commit message: Add depth information to detected cubes
-
 import cv2
 import pyrealsense2 as rs
 import numpy as np
 import argparse
 import logging
+import json
 
 class RealSenseCubeDetector:
-    def __init__(self, min_area=100, resolution=(640, 480)):
+    def __init__(self, min_area=100, resolution=(640, 480), output_file=None):
         self.pipeline = rs.pipeline()
         self.config = rs.config()
         self.config.enable_stream(rs.stream.depth, resolution[0], resolution[1], rs.format.z16, 30)
@@ -21,6 +20,7 @@ class RealSenseCubeDetector:
         self.color_ranges = self.define_color_ranges()
         self.min_area = min_area  # Minimum area of the contour to be considered as a cube
         self.kernel = np.ones((5, 5), np.uint8)  # Morphological kernel
+        self.output_file = output_file
 
     def define_color_ranges(self):
         return {
@@ -77,6 +77,11 @@ class RealSenseCubeDetector:
         cv2.imshow('RealSense Cube Detection', color_image)
 
         logging.info(f"Detected cubes: {detected_cubes}")
+
+        if self.output_file:
+            with open(self.output_file, 'w') as f:
+                json.dump(detected_cubes, f)
+
         return detected_cubes
 
     def stop(self):
@@ -90,11 +95,12 @@ if __name__ == "__main__":
     parser.add_argument("--width", type=int, default=640, help="Width of the video stream")
     parser.add_argument("--height", type=int, default=480, help="Height of the video stream")
     parser.add_argument("--log", type=str, default="INFO", help="Logging level")
+    parser.add_argument("--output", type=str, help="Output file to save detected cubes")
     args = parser.parse_args()
 
     logging.basicConfig(level=args.log.upper())
 
-    detector = RealSenseCubeDetector(min_area=args.min_area, resolution=(args.width, args.height))
+    detector = RealSenseCubeDetector(min_area=args.min_area, resolution=(args.width, args.height), output_file=args.output)
     try:
         while True:
             detected_cubes = detector.detect_cubes()
