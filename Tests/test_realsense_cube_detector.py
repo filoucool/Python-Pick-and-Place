@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 import numpy as np
 import cv2
-from main import RealSenseCubeDetector  # Adjust import path
+from detector import RealSenseCubeDetector  # Adjust import path
 
 
 class TestRealSenseCubeDetector(unittest.TestCase):
