@@ -5,7 +5,7 @@ import logging
 import time
 from tensorflow.keras.models import load_model
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
-
+import json
 
 class RealSenseObjectDetector:
     def __init__(self, model_path, label_path, resolution=(640, 480), output_file=None):
@@ -15,6 +15,7 @@ class RealSenseObjectDetector:
         self.config.enable_stream(rs.stream.color, resolution[0], resolution[1], rs.format.bgr8, 30)
         try:
             self.pipeline.start(self.config)
+            logging.info("RealSense pipeline started successfully")
         except Exception as e:
             logging.error(f"Failed to start RealSense pipeline: {e}")
             self.pipeline = None
@@ -23,11 +24,14 @@ class RealSenseObjectDetector:
         time.sleep(2)
 
         # Load the model
+        logging.info(f"Loading model from {model_path}")
         self.model = load_model(model_path)
+        logging.info(f"Model loaded successfully")
 
         # Load labels
         with open(label_path, 'r') as f:
             self.labels = [line.strip() for line in f.readlines()]
+        logging.info(f"Labels loaded: {self.labels}")
 
         self.output_file = output_file
 
@@ -38,51 +42,78 @@ class RealSenseObjectDetector:
         input_image = np.expand_dims(input_image, axis=0)  # Add batch dimension
 
         predictions = self.model.predict(input_image)
+        logging.info(f"Raw predictions: {predictions}")  # Debugging line to see raw predictions
         detected_objects = self.postprocess_predictions(predictions, width, height)
         return detected_objects
 
     def postprocess_predictions(self, predictions, image_width, image_height):
         detected_objects = []
-        # This will vary depending on your model's output format
         for prediction in predictions:
-            confidence = prediction[4]  # Assuming confidence score is at index 4
-            if confidence > 0.5:  # Confidence threshold
-                class_id = int(prediction[5])  # Assuming class id is at index 5
-                box = prediction[:4] * np.array([image_width, image_height, image_width, image_height])
-                (x, y, x1, y1) = box.astype("int")
-                label = self.labels[class_id] if class_id < len(self.labels) else "Unknown"
-                detected_objects.append({
-                    'label': label,
-                    'confidence': confidence,
-                    'rectangle': (x, y, x1 - x, y1 - y)
-                })
+            if len(prediction) == 5:
+                x_min, y_min, x_max, y_max, confidence = prediction
+
+                if confidence > 0.5:  # Confidence threshold
+                    x_min, y_min, x_max, y_max = (x_min * image_width, y_min * image_height, x_max * image_width, y_max * image_height)
+                    x_min, y_min, x_max, y_max = int(x_min), int(y_min), int(x_max), int(y_max)
+                    class_id = 0  # Assuming single-class model
+                    label = self.labels[class_id] if class_id < len(self.labels) else "Unknown"
+                    detected_objects.append({
+                        'label': label,
+                        'confidence': confidence,
+                        'rectangle': (x_min, y_min, x_max - x_min, y_max - y_min)
+                    })
+            else:
+                logging.error(f"Unexpected prediction format: {prediction}")
+
         return detected_objects
+
+    def apply_mask(self, image, rectangle):
+        x, y, w, h = rectangle
+        mask = np.zeros_like(image)
+        mask[y:y+h, x:x+w] = image[y:y+h, x:x+w]
+        return mask
 
     def detect_and_display(self):
         if not self.pipeline:
             return []
 
-        frames = self.pipeline.wait_for_frames()
-        depth_frame = frames.get_depth_frame()
-        color_frame = frames.get_color_frame()
-        if not color_frame or not depth_frame:
-            return []
+        while True:
+            try:
+                frames = self.pipeline.wait_for_frames(timeout_ms=10000)  # Increased timeout
+                logging.info("Frames received from RealSense camera")
+            except RuntimeError as e:
+                logging.error(f"Error receiving frames: {e}")
+                return []
 
-        color_image = np.asanyarray(color_frame.get_data())
-        detected_objects = self.detect_objects(color_image)
+            depth_frame = frames.get_depth_frame()
+            color_frame = frames.get_color_frame()
+            if not color_frame or not depth_frame:
+                logging.error("Color frame or depth frame not received")
+                continue
 
-        for obj in detected_objects:
-            x, y, w, h = obj['rectangle']
-            label = obj['label']
-            confidence = obj['confidence']
-            cv2.rectangle(color_image, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            text = f"{label}: {confidence:.2f}"
-            cv2.putText(color_image, text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+            color_image = np.asanyarray(color_frame.get_data())
+            detected_objects = self.detect_objects(color_image)
 
-        cv2.imshow('RealSense Object Detection', color_image)
-        cv2.waitKey(1)  # Ensure the window refreshes to show the detection
+            for obj in detected_objects:
+                x, y, w, h = obj['rectangle']
+                label = obj['label']
+                confidence = obj['confidence']
+                masked_image = self.apply_mask(color_image, (x, y, w, h))
+                color_image[y:y+h, x:x+w] = masked_image[y:y+h, x:x+w]
+                cv2.rectangle(color_image, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                text = f"{label}: {confidence:.2f}"
+                cv2.putText(color_image, text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
 
-        logging.info(f"Detected objects: {detected_objects}")
+            cv2.imshow('RealSense Object Detection', color_image)
+            cv2.waitKey(1)  # Ensure the window refreshes to show the detection
+
+            logging.info(f"Detected objects: {detected_objects}")
+
+            if detected_objects:
+                logging.info("Object detected, terminating function")
+                break
+
+            time.sleep(1)  # Add a delay to give TensorFlow enough time for detection
 
         if self.output_file:
             with open(self.output_file, 'w') as f:
@@ -95,17 +126,15 @@ class RealSenseObjectDetector:
             self.pipeline.stop()
         cv2.destroyAllWindows()
 
-
 # External callable function
 def run_realsense_object_detector(model_path, label_path, resolution=(640, 480), log_level="INFO", output_file=None):
     logging.basicConfig(level=log_level.upper())
-    detector = RealSenseObjectDetector(model_path=model_path, label_path=label_path, resolution=resolution,
-                                       output_file=output_file)
+    detector = RealSenseObjectDetector(model_path=model_path, label_path=label_path, resolution=resolution, output_file=output_file)
     detected_objects = detector.detect_and_display()
     detector.stop()
     return detected_objects
 
 # Example of how to use in another script
-# from realsense_cube_detector import run_realsense_object_detector
-# detected_objects = run_realsense_object_detector(model_path="model.h5", label_path="labels.txt", resolution=(640, 480), log_level="INFO", output_file="output.json")
+# from realsense_object_detector import run_realsense_object_detector
+# detected_objects = run_realsense_object_detector(model_path="keras_model.h5", label_path="labels.txt", resolution=(640, 480), log_level="INFO", output_file="output.json")
 # print(detected_objects)
